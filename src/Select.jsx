@@ -11,6 +11,8 @@ import { Item as MenuItem, ItemGroup as MenuItemGroup } from 'rc-menu';
 import warning from 'warning';
 import Option from './Option';
 
+let lastProps = null;
+
 import {
   getPropValue,
   getValuePropValue,
@@ -102,6 +104,22 @@ class Select extends React.Component {
     this.saveSelectTriggerRef = saveRef(this, 'selectTriggerRef');
     this.saveRootRef = saveRef(this, 'rootRef');
     this.saveSelectionRef = saveRef(this, 'selectionRef');
+
+    this._setState = this.setState;
+    this.setState = function (...args) {
+      const { open } = args[0];
+      const origin = this.state.open;
+      this._setState(...args);
+      if (origin !== open) {
+        if (this.state.open === open) {
+          console.error('Sync:', open);
+        } else {
+          console.error('Async:', open);
+        }
+      } else {
+        console.error('Same, not sure sync:', open);
+      }
+    };
   }
 
   componentDidMount() {
@@ -248,6 +266,7 @@ class Select extends React.Component {
         return;
       }
       value = [selectedValue];
+      console.log('=============== On Close ================');
       this.setOpenState(false, true);
     }
     this.fireChange(value);
@@ -375,6 +394,7 @@ class Select extends React.Component {
   };
 
   static getDerivedStateFromProps = (nextProps, prevState) => {
+    console.log('Get From Props:', nextProps);
     const optionsInfo = prevState.skipBuildOptionsInfo
                         ? prevState.optionsInfo
                         : Select.getOptionsInfoFromProps(nextProps, prevState);
@@ -394,6 +414,17 @@ class Select extends React.Component {
         );
       }
     }
+
+    if (lastProps) {
+      (new Set([...Object.keys(lastProps), ...Object.keys(nextProps)]))
+        .forEach((key) => {
+          if (lastProps[key] !== nextProps[key]) {
+            console.log('Changed:', key, lastProps[key], nextProps[key]);
+          }
+        });
+    }
+    lastProps = nextProps;
+
     return newState;
   };
 
@@ -672,6 +703,8 @@ class Select extends React.Component {
       this.maybeFocus(open, needFocus);
     }
     this.setState(nextState, () => {
+      console.log('================ Closed =================');
+      console.log('Current:', this.state.open);
       if (open) {
         this.maybeFocus(open, needFocus);
       }
